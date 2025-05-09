@@ -5,11 +5,10 @@ using System.Linq;
 public class PathfinderAStar : MonoBehaviour
 {
     public MapManager mapManager;
-    public float moveSpeed = 10f;
+    public float moveSpeed = 15f;
 
     private List<Vector2Int> path;
     private int pathIdx = 0;
-    private Cell curCell;
 
     private class Node
     {
@@ -28,10 +27,9 @@ public class PathfinderAStar : MonoBehaviour
         }
     }
 
-    private void Start()
+    public void StartFindingPath()
     {
         transform.position = new Vector2(mapManager.GetStartPos().x * mapManager.cellSize, -mapManager.GetStartPos().y * mapManager.cellSize);
-        curCell = mapManager.GetCellAtPos(mapManager.GetStartPos().x, mapManager.GetStartPos().y);
         FindPath(mapManager.GetStartPos(), mapManager.GetGoalPos());
     }
 
@@ -43,7 +41,6 @@ public class PathfinderAStar : MonoBehaviour
         Node targetNode = new(targetPos);
 
         openSet.Add(startNode);
-
         while (openSet.Count > 0)
         {
             Node currentNode = openSet.OrderBy(node => node.fCost).First();
@@ -62,7 +59,7 @@ public class PathfinderAStar : MonoBehaviour
             for (int i = 0; i < 4; i++)
             {
                 Vector2Int neighborPos = new(currentNode.position.x + dx[i], currentNode.position.y + dy[i]);
-                if (!mapManager.IsWall(neighborPos.x, neighborPos.y) || closedSet.Contains(neighborPos)) continue;
+                if (mapManager.IsWall(neighborPos.x, neighborPos.y) || closedSet.Contains(neighborPos)) continue;
 
                 int newGCost = currentNode.gCost + 1;
                 Node neighborNode = new(neighborPos, currentNode);
@@ -74,7 +71,7 @@ public class PathfinderAStar : MonoBehaviour
                 {
                     if (existingNeighbor != null)
                         openSet.Remove(existingNeighbor);
-                    
+
                     openSet.Add(neighborNode);
                 }
             }
@@ -96,21 +93,20 @@ public class PathfinderAStar : MonoBehaviour
 
     private void Update()
     {
-        if (path != null && pathIdx < path.Count)
+        if (mapManager.isStarted && path != null && pathIdx < path.Count)
         {
             Vector2 targetPos = new(path[pathIdx].x * mapManager.cellSize, -path[pathIdx].y * mapManager.cellSize);
             transform.position = Vector2.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
-
             if (Vector2.Distance(transform.position, targetPos) < 0.01f)
             {
-                if (curCell != null && curCell.type != 3)
-                    curCell.SetType(4, mapManager.wallSprite, mapManager.pathSprite, mapManager.goalSprite, mapManager.visitedSprite);
+                Cell visitedCell = mapManager.GetCellAtPos(path[pathIdx].x, path[pathIdx].y);
+                if (visitedCell != null && visitedCell.type != 3)
+                {
+                    visitedCell.type = 4;
+                    visitedCell.sp.sprite = mapManager.visitedSprite;
+                }
 
                 pathIdx++;
-
-                if (pathIdx < path.Count)
-                    curCell = mapManager.GetCellAtPos(path[pathIdx].x, path[pathIdx].y);
-                
                 if (pathIdx == path.Count)
                     Debug.Log("Finish!");
             }
